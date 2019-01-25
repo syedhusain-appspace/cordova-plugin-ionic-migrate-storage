@@ -1,34 +1,26 @@
-#import "MigrateWebSQLStorage.h"
+#import "MigrateStorage.h"
 #import "FMDB.h"
 
-#define TAG @"\nMigrateWebSQL"
+#define TAG @"\MigrateStorage"
 
+// TODO Make these paths simpler to deal with? We could embded the full paths in these strings if we want to...
 #define ORIG_DIRPATH @"WebKit/LocalStorage/"
-#define TARGET_DIRPATH @"WebKit/WebsiteData/WebSQL/"
+#define TARGET_DIRPATH @"WebKit/WebsiteData/"
+
+#define ORIG_WEBSQL_DIRPATH @"WebKit/LocalStorage/"
+#define TARGET_WEBSQL_DIRPATH @"WebKit/WebsiteData/WebSQL/"
+
+#define ORIG_LS_DIRPATH @"WebKit/LocalStorage/"
+#define ORIG_LS_CACHE_DIRPATH @"Caches/"
+#define TARGET_LS_DIRPATH @"WebKit/WebsiteData/LocalStorage/"
+
+#define ORIG_IDB_DIRPATH @"WebKit/LocalStorage/___IndexedDB/"
+#define TARGET_IDB_DIRPATH @"WebKit/WebsiteData/IndexedDB/"
 
 #define UI_WEBVIEW_PROTOCOL_DIR @"file__0"
 #define WK_WEBVIEW_PROTOCOL_DIR @"http_localhost_8080"
 
-@implementation MigrateWebSQLStorage
-
-- (BOOL)deleteFile:(NSString *)path
-{
-    // NSLog(@"%@ deleteFile(path: %@ )", TAG, path);
-    
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    
-    // Bail out if source file does not exist
-    if (![fileManager fileExistsAtPath:path]) {
-        // NSLog(@"%@ Source file does not exist", TAG);
-        return NO;
-    }
-    
-    BOOL res = [fileManager removeItemAtPath:path error:nil];
-    
-    // NSLog(@"%@ end deleteFile(path: %@ ); success: %@", TAG, path, res ? @"YES" : @"NO");
-    
-    return res;
-}
+@implementation MigrateStorage
 
 - (BOOL)moveFile:(NSString*)src to:(NSString*)dest
 {
@@ -95,8 +87,8 @@
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSString *appLibraryDir = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
     
-    NSString *uiWebViewRootPath = [appLibraryDir stringByAppendingPathComponent:ORIG_DIRPATH];
-    NSString *wkWebViewRootPath = [appLibraryDir stringByAppendingPathComponent:TARGET_DIRPATH];
+    NSString *uiWebViewRootPath = [appLibraryDir stringByAppendingPathComponent:ORIG_WEBSQL_DIRPATH];
+    NSString *wkWebViewRootPath = [appLibraryDir stringByAppendingPathComponent:TARGET_WEBSQL_DIRPATH];
     
     //
     // Copy {appLibrary}/WebKit/LocalStorage/Databases.db to {appLibrary}/WebKit/WebsiteData/WebSQL/Databases.db
@@ -165,23 +157,82 @@
         return NO;
     }
     
-    // NSLog(@"%@ end migrateWebSQL()", TAG);
+    // NSLog(@"%@ end migrateWebSQL() with success: %@", TAG, success ? @"YES" : @"NO");
     return YES;
 }
+
+- (BOOL) migrateLocalStorage
+{
+    // NSLog(@"%@ migrateLocalStorage()", TAG);
+    
+    BOOL success;
+    
+    NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+    
+    NSString* originalLSFileName = [UI_WEBVIEW_PROTOCOL_DIR stringByAppendingString:@".localstorage"];
+    NSString* targetLSFileName = [WK_WEBVIEW_PROTOCOL_DIR stringByAppendingString:@".localstorage"];
+    
+    NSString* originalLSFilePath = [[appLibraryFolder stringByAppendingPathComponent:ORIG_LS_DIRPATH] stringByAppendingPathComponent:originalLSFileName];
+    NSString* originalLSCachePath = [[appLibraryFolder stringByAppendingPathComponent:ORIG_LS_CACHE_DIRPATH] stringByAppendingPathComponent:originalLSFileName];
+    
+    // Use the file in the cache if not found in original path
+    NSString* original = [[NSFileManager defaultManager] fileExistsAtPath:originalLSFilePath] ? originalLSFilePath : originalLSCachePath;
+    NSString* target = [[appLibraryFolder stringByAppendingPathComponent:TARGET_LS_DIRPATH] stringByAppendingPathComponent:targetLSFileName];
+
+    // NSLog(@"%@ LS original %@", TAG, original);
+    // NSLog(@"%@ LS target %@", TAG, target);
+    
+    // Only copy data if no existing localstorage data exists yet for wkwebview
+    if (![[NSFileManager defaultManager] fileExistsAtPath:target]) {
+        // NSLog(@"%@ No existing localstorage data found for WKWebView. Migrating data from UIWebView", TAG);
+        BOOL success1 = [self moveFile:original to:target];
+        BOOL success2 = [self moveFile:[original stringByAppendingString:@"-shm"] to:[target stringByAppendingString:@"-shm"]];
+        BOOL success3 = [self moveFile:[original stringByAppendingString:@"-wal"] to:[target stringByAppendingString:@"-wal"]];
+        // NSLog(@"%@ copy status %d %d %d", TAG, success1, success2, success3);
+        success = success1 && success2 && success3;
+    }
+    else {
+        // NSLog(@"%@ found LS data. not migrating", TAG);
+        success = NO;
+    }
+    
+    // NSLog(@"%@ end migrateLocalStorage() with success: %@", TAG, success ? @"YES": @"NO");
+    
+    return success;
+}
+
+- (BOOL) migrateIndexedDB
+{
+    // NSLog(@"%@ migrateIndexedDB()", TAG);
+    
+    NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+    
+    NSString* original = [[appLibraryFolder stringByAppendingPathComponent:ORIG_IDB_DIRPATH] stringByAppendingPathComponent:UI_WEBVIEW_PROTOCOL_DIR];
+    NSString* target = [[appLibraryFolder stringByAppendingPathComponent:TARGET_IDB_DIRPATH] stringByAppendingPathComponent:WK_WEBVIEW_PROTOCOL_DIR];
+    
+    // NSLog(@"%@ IDB original %@", TAG, original);
+    // NSLog(@"%@ IDB target %@", TAG, target);
+    
+    if (![[NSFileManager defaultManager] fileExistsAtPath:target]) {
+        // NSLog(@"%@ No existing IDB data found for WKWebView. Migrating data from UIWebView", TAG);
+        BOOL success = [self moveFile:original to:target];
+        // NSLog(@"%@ copy status %d", TAG, success);
+        return success;
+    }
+    else {
+        // NSLog(@"%@ found IDB data. Not migrating", TAG);
+        return NO;
+    }
+}
+
 
 - (void)pluginInitialize
 {
     // NSLog(@"%@ pluginInitialize()", TAG);
     
-    if([self migrateWebSQL])
-    {
-        // if all successfully migrated, do some cleanup!
-        NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
-        NSString* originalFolder = [appLibraryFolder stringByAppendingPathComponent:ORIG_DIRPATH];
-        BOOL res = [self deleteFile:originalFolder];
-        
-        // NSLog(@"%@ final deletion success: %@", TAG, res ? @"YES" : @"NO");
-    }
+    [self migrateWebSQL];
+    [self migrateLocalStorage];
+    [self migrateIndexedDB];
     
     // NSLog(@"%@ end pluginInitialize()", TAG);
 }

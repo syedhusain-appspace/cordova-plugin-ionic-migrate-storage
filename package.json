@@ -1,25 +1,17 @@
 {
-  "name": "cordova-plugin-ionic-migrate-websql",
-  "version": "1.0.0",
+  "name": "cordova-plugin-ionic-migrate-storage",
+  "version": "0.0.1",
   "cordova": {
-    "id": "cordova-plugin-ionic-migrate-websql",
+    "id": "cordova-plugin-ionic-migrate-storage",
     "platforms": [
       "ios"
     ]
   },
-  "description": "Cordova plugin that migrates WebSQL data from UIWebview to WkWebView.",
+  "description": "Cordova plugin that migrates WebSQL, localStorage and IDB data from UIWebview to WkWebView",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "ecosystem:cordova",
-    "cordova",
-    "cordova-ios",
-    "uiwebview",
-    "wkwebview",
-    "websql"
-  ],
-  "author": "Pointman Dev <dev@pointman.com>",
-  "license": "ISC"
+  "keywords": ["ecosystem:cordova", "cordova", "cordova-ios", "uiwebview", "wkwebview", "websql", "localstorage", "indexeddb"],
+  "author": "Pointman Dev <dev@pointman.com>"
 }
