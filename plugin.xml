@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" 
+    xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-ionic-migrate-websql" version="1.0.0">
+    <name>Migrate WebSQL data</name>
+    <description>Cordova plugin that migrates WebSQL data from UIWebview to WkWebView</description>
+    <license>Apache 2.0</license>
+    <keywords>ecosystem:cordova,cordova,cordova-ios,uiwebview,wkwebview,websql</keywords>
+
+    <platform name="ios">
+
+        <config-file target="config.xml" parent="/*">
+            <feature name="MigrateWebSQLStorage">
+                <param name="ios-package" value="MigrateWebSQLStorage" onload="true" />
+            </feature>
+        </config-file>
+        
+        <header-file src="src/ios/MigrateWebSQLStorage.h" />
+        <source-file src="src/ios/MigrateWebSQLStorage.m" />
+        
+        <framework src="FMDB" type="podspec" spec="~> 2.7.4" />
+    </platform>
+
+</plugin>
