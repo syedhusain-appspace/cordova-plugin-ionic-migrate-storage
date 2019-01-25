@@ -1,7 +1,16 @@
 #import "MigrateStorage.h"
 #import "FMDB.h"
 
-#define TAG @"\MigrateStorage"
+// Uncomment this to enable debug mode
+// #define DEBUG_MODE = 1;
+
+#ifdef DEBUG_MODE
+#   define logDebug(...) NSLog(__VA_ARGS__)
+#else
+#   define logDebug(...)
+#endif
+
+#define TAG @"\nMigrateStorage"
 
 // TODO Make these paths simpler to deal with? We could embded the full paths in these strings if we want to...
 #define ORIG_DIRPATH @"WebKit/LocalStorage/"
@@ -24,21 +33,23 @@
 
 - (BOOL)moveFile:(NSString*)src to:(NSString*)dest
 {
-    // NSLog(@"%@ moveFile(src: %@ , dest: %@ )", TAG, src, dest);
+    logDebug(@"%@ moveFile()", TAG);
+    logDebug(@"%@ moveFile() src: %@", TAG, src);
+    logDebug(@"%@ moveFile() dest: %@", TAG, dest);
     
     NSFileManager* fileManager = [NSFileManager defaultManager];
     
     // Bail out if source file does not exist
     if (![fileManager fileExistsAtPath:src]) {
-        // NSLog(@"%@ source file does not exist: %@", TAG, src);
+        logDebug(@"%@ source file does not exist: %@", TAG, src);
         return NO;
     }
     
     // Bail out if dest file exists
-     if ([fileManager fileExistsAtPath:dest]) {
-        // NSLog(@"%@ destination file already exists: %@", TAG, dest);
-       return NO;
-     }
+    if ([fileManager fileExistsAtPath:dest]) {
+        logDebug(@"%@ destination file already exists: %@", TAG, dest);
+        return NO;
+    }
     
     // create path to destination
     if (![fileManager createDirectoryAtPath:[dest stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil]) {
@@ -47,14 +58,14 @@
     
     BOOL res = [fileManager moveItemAtPath:src toPath:dest error:nil];
     
-    // NSLog(@"%@ end moveFile(src: %@ , dest: %@ ); success: %@", TAG, src, dest, res ? @"YES" : @"NO");
+    logDebug(@"%@ end moveFile(src: %@ , dest: %@ ); success: %@", TAG, src, dest, res ? @"YES" : @"NO");
     
     return res;
 }
 
 - (BOOL)changeProtocolEntriesinReferenceDB:(NSString *)path from:(NSString *)srcProtocol to:(NSString *)targetProtocol
 {
-    // NSLog(@"%@ changeProtocolEntriesinReferenceDB()", TAG);
+    logDebug(@"%@ changeProtocolEntriesinReferenceDB()", TAG);
     
     FMDatabase *db = [FMDatabase databaseWithPath:path];
     
@@ -62,27 +73,27 @@
     if(![db open])
     {
         
-        // NSLog(@"%@ dbOpen error: %@ ; exiting..", TAG, [db lastErrorMessage]);
+        logDebug(@"%@ dbOpen error: %@ ; exiting..", TAG, [db lastErrorMessage]);
         return NO;
     }
     
     BOOL success = [db executeUpdate:@"UPDATE Databases SET origin = ? WHERE origin = ?", WK_WEBVIEW_PROTOCOL_DIR, UI_WEBVIEW_PROTOCOL_DIR];
-
+    
     if (!success)
     {
-        // NSLog(@"%@ executeUpdate error = %@", TAG, [db lastErrorMessage]);
+        logDebug(@"%@ executeUpdate error = %@", TAG, [db lastErrorMessage]);
     }
-
+    
     [db close];
     
-    // NSLog(@"%@ end changeProtocolEntriesinReferenceDB()", TAG);
+    logDebug(@"%@ end changeProtocolEntriesinReferenceDB()", TAG);
     
     return success;
 }
 
 - (BOOL)migrateWebSQL
 {
-    // NSLog(@"%@ migrateWebSQL()", TAG);
+    logDebug(@"%@ migrateWebSQL()", TAG);
     
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSString *appLibraryDir = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
@@ -101,7 +112,7 @@
     // Exit away if the source file does not exist
     if(![fileManager fileExistsAtPath:uiWebViewRefDBPath])
     {
-        // NSLog(@"%@ source path not found: %@ ; exiting..", TAG, uiWebViewRefDBPath);
+        logDebug(@"%@ source path not found: %@ ; exiting..", TAG, uiWebViewRefDBPath);
         return NO;
     }
     
@@ -110,15 +121,15 @@
     // Before copying, open Databases.db and change the reference from `file__0` to `localhost_http_8080`, so WkWebView will understand this
     if (![self changeProtocolEntriesinReferenceDB:uiWebViewRefDBPath from:UI_WEBVIEW_PROTOCOL_DIR to:WK_WEBVIEW_PROTOCOL_DIR])
     {
-        // NSLog(@"%@ could not perform needed update; exiting..", TAG);
+        logDebug(@"%@ could not perform needed update; exiting..", TAG);
         return NO;
     }
     
-
+    
     // NOTE: There are `-shm` and `-wal` files in this directory. We are not copying them, because we closed the DB in `changeProtocolEntriesinReferenceDB`
     if(![self moveFile:uiWebViewRefDBPath to:wkWebViewRefDBPath])
     {
-        // NSLog(@"%@ could not move Databases.db; exiting..", TAG);
+        logDebug(@"%@ could not move Databases.db; exiting..", TAG);
         return NO;
     }
     
@@ -153,17 +164,17 @@
     
     if(!success)
     {
-        // NSLog(@"%@ could not move one of the databases in %@ ; exiting..", TAG, uiWebViewDBFileDir);
+        logDebug(@"%@ could not move one of the databases in %@ ; exiting..", TAG, uiWebViewDBFileDir);
         return NO;
     }
     
-    // NSLog(@"%@ end migrateWebSQL() with success: %@", TAG, success ? @"YES" : @"NO");
+    logDebug(@"%@ end migrateWebSQL() with success: %@", TAG, success ? @"YES" : @"NO");
     return YES;
 }
 
 - (BOOL) migrateLocalStorage
 {
-    // NSLog(@"%@ migrateLocalStorage()", TAG);
+    logDebug(@"%@ migrateLocalStorage()", TAG);
     
     BOOL success;
     
@@ -178,49 +189,49 @@
     // Use the file in the cache if not found in original path
     NSString* original = [[NSFileManager defaultManager] fileExistsAtPath:originalLSFilePath] ? originalLSFilePath : originalLSCachePath;
     NSString* target = [[appLibraryFolder stringByAppendingPathComponent:TARGET_LS_DIRPATH] stringByAppendingPathComponent:targetLSFileName];
-
-    // NSLog(@"%@ LS original %@", TAG, original);
-    // NSLog(@"%@ LS target %@", TAG, target);
+    
+    logDebug(@"%@ LS original %@", TAG, original);
+    logDebug(@"%@ LS target %@", TAG, target);
     
     // Only copy data if no existing localstorage data exists yet for wkwebview
     if (![[NSFileManager defaultManager] fileExistsAtPath:target]) {
-        // NSLog(@"%@ No existing localstorage data found for WKWebView. Migrating data from UIWebView", TAG);
+        logDebug(@"%@ No existing localstorage data found for WKWebView. Migrating data from UIWebView", TAG);
         BOOL success1 = [self moveFile:original to:target];
         BOOL success2 = [self moveFile:[original stringByAppendingString:@"-shm"] to:[target stringByAppendingString:@"-shm"]];
         BOOL success3 = [self moveFile:[original stringByAppendingString:@"-wal"] to:[target stringByAppendingString:@"-wal"]];
-        // NSLog(@"%@ copy status %d %d %d", TAG, success1, success2, success3);
+        logDebug(@"%@ copy status %d %d %d", TAG, success1, success2, success3);
         success = success1 && success2 && success3;
     }
     else {
-        // NSLog(@"%@ found LS data. not migrating", TAG);
+        logDebug(@"%@ found LS data. not migrating", TAG);
         success = NO;
     }
     
-    // NSLog(@"%@ end migrateLocalStorage() with success: %@", TAG, success ? @"YES": @"NO");
+    logDebug(@"%@ end migrateLocalStorage() with success: %@", TAG, success ? @"YES": @"NO");
     
     return success;
 }
 
 - (BOOL) migrateIndexedDB
 {
-    // NSLog(@"%@ migrateIndexedDB()", TAG);
+    logDebug(@"%@ migrateIndexedDB()", TAG);
     
     NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
     
     NSString* original = [[appLibraryFolder stringByAppendingPathComponent:ORIG_IDB_DIRPATH] stringByAppendingPathComponent:UI_WEBVIEW_PROTOCOL_DIR];
     NSString* target = [[appLibraryFolder stringByAppendingPathComponent:TARGET_IDB_DIRPATH] stringByAppendingPathComponent:WK_WEBVIEW_PROTOCOL_DIR];
     
-    // NSLog(@"%@ IDB original %@", TAG, original);
-    // NSLog(@"%@ IDB target %@", TAG, target);
+    logDebug(@"%@ IDB original %@", TAG, original);
+    logDebug(@"%@ IDB target %@", TAG, target);
     
     if (![[NSFileManager defaultManager] fileExistsAtPath:target]) {
-        // NSLog(@"%@ No existing IDB data found for WKWebView. Migrating data from UIWebView", TAG);
+        logDebug(@"%@ No existing IDB data found for WKWebView. Migrating data from UIWebView", TAG);
         BOOL success = [self moveFile:original to:target];
-        // NSLog(@"%@ copy status %d", TAG, success);
+        logDebug(@"%@ copy status %d", TAG, success);
         return success;
     }
     else {
-        // NSLog(@"%@ found IDB data. Not migrating", TAG);
+        logDebug(@"%@ found IDB data. Not migrating", TAG);
         return NO;
     }
 }
@@ -228,14 +239,15 @@
 
 - (void)pluginInitialize
 {
-    // NSLog(@"%@ pluginInitialize()", TAG);
+    logDebug(@"%@ pluginInitialize()", TAG);
     
     [self migrateWebSQL];
     [self migrateLocalStorage];
     [self migrateIndexedDB];
     
-    // NSLog(@"%@ end pluginInitialize()", TAG);
+    logDebug(@"%@ end pluginInitialize()", TAG);
 }
 
 @end
+
 
