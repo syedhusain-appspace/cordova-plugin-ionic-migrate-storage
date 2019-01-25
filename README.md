@@ -7,7 +7,7 @@
 Straight forward, just via `cordova plugin add`.
 
 ```
-cordova plugin add https://github.com/pointmanhq/cordova-plugin-ionic-migrate-websql --save
+cordova plugin add https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage --save
 ```
 
 Use the latest commit SHA if you need to keep it locked to a specific version.
@@ -21,7 +21,7 @@ Use the latest commit SHA if you need to keep it locked to a specific version.
     - Delete the app from your device
     - Run `cordova plugin rm --save cordova-plugin-ionic-webview cordova-plugin-ionic-migrate-storage`
     - Build your app and run it. Store something in localStorage, WebSQL and IndexedDB.
-    - Run `cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/pointmanhq/cordova-plugin-ionic-migrate-websql`
+    - Run `cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage`
     - Build your app and run it. The stored data must all exist!
 
 ## Thanks
