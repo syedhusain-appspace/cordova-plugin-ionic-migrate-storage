@@ -16,7 +16,13 @@ Use the latest commit SHA if you need to keep it locked to a specific version.
 
 This has been tested only with `cordova-plugin-ionic-webview@2.3.2`!
 
-## Inspiration
+## Thanks
+
+Creating this plugin would not have been possible if not for these repositories and their contributors:
+
+* https://github.com/jairemix/cordova-plugin-migrate-localstorage/
+* https://github.com/MaKleSoft/cordova-plugin-migrate-localstorage
+* https://github.com/Telerik-Verified-Plugins/WKWebView/
 
 ## TODO 
 
