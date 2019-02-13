@@ -9,7 +9,7 @@ _* Only on iOS_
 Straight forward, just via `cordova plugin add`.
 
 ```
-cordova plugin add https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.0.1 --save
+cordova plugin add https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.0.2 --save
 ```
 
 Use one of [the tags listed here](https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage/tags) if you want to lock it down to a specific changeset.
@@ -26,7 +26,7 @@ Use one of [the tags listed here](https://github.com/pointmanhq/cordova-plugin-i
         ```cordova plugin rm --save cordova-plugin-ionic-webview cordova-plugin-ionic-migrate-storage```
     - Build your app and run it. Store something in localStorage, WebSQL and IndexedDB.
     - Add the plugins back:
-        ```cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.0.1```
+        ```cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.0.2```
     - Build your app and run it. The stored data must all exist!
 
 ## Thanks
