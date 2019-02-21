@@ -3,7 +3,6 @@ package com.migrate.android;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
-import android.util.Pair;
 
 import com.appunite.leveldb.LevelDB;
 import com.appunite.leveldb.LevelIterator;
@@ -15,11 +14,6 @@ import org.apache.cordova.CordovaPlugin;
 
 import org.apache.cordova.CordovaWebView;
 import java.io.File;
-import java.security.Key;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Main class that is instantiated by cordova
@@ -28,7 +22,6 @@ import java.util.Map;
  * This plugin migrates WebSQL and localStorage from the old webview to the new webview
  * 
  * TODO
- * - Make `localhost:8080` a configurable setting
  * - Test if we can we remove old file:// keys?
  * - Properly handle exceptions? We have a catch-all at the moment that is dealt with in the `initialize` function
  * - migrating IndexedDB (may not be possible because of leveldb complexities)
@@ -39,14 +32,23 @@ public class MigrateStorage extends CordovaPlugin {
 
     private static final String TAG = "com.migrate.android";
     private static final String FILE_PROTOCOL = "file://";
-    private static final String HTTP_LOCALHOST_PROTOCOL = "http://localhost:8080";
-
     private static final String WEBSQL_FILE_DIR_NAME = "file__0";
-    private static final String WEBSQL_HTTP_LOCALHOST_DIR_NAME = "http_localhost_8080";
+    private static final String DEFAULT_PORT_NUMBER = "8080";
+    private static final String CDV_SETTING_PORT_NUMBER = "WKPort";
+
+    private String portNumber;
 
 
     private void logDebug(String message) {
         if(DEBUG_MODE) Log.d(TAG, message);
+    }
+
+    private String getLocalHostProtocolDirName() {
+        return "http_localhost_" + this.portNumber;
+    }
+
+    private String getLocalHostProtocol() {
+        return "http://localhost:" + this.portNumber;
     }
 
     private String getRootPath() {
@@ -71,7 +73,7 @@ public class MigrateStorage extends CordovaPlugin {
     }
 
     /**
-     * Migrate localStorage from `file://` to `http://localhost:8080`
+     * Migrate localStorage from `file://` to `http://localhost:{portNumber}`
      *
      * TODO Test if we can we remove old file:// keys?
      *
@@ -91,8 +93,10 @@ public class MigrateStorage extends CordovaPlugin {
 
         LevelDB db = new LevelDB(levelDbPath);
 
-        if(db.exists(Utils.stringToBytes("META:" + HTTP_LOCALHOST_PROTOCOL))) {
-            this.logDebug("migrateLocalStorage: Found 'META:" + HTTP_LOCALHOST_PROTOCOL+ "' key; Skipping migration");
+        String localHostProtocol = this.getLocalHostProtocol();
+
+        if(db.exists(Utils.stringToBytes("META:" + localHostProtocol))) {
+            this.logDebug("migrateLocalStorage: Found 'META:" + localHostProtocol + "' key; Skipping migration");
             db.close();
             return;
         }
@@ -104,14 +108,14 @@ public class MigrateStorage extends CordovaPlugin {
         WriteBatch batch = new WriteBatch();
 
 
-        // 🔃 Loop through the keys and replace `file://` with `http://localhost:8080`
+        // 🔃 Loop through the keys and replace `file://` with `http://localhost:{portNumber}`
         logDebug("migrateLocalStorage: Starting replacements;");
         for(iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
             String key = Utils.bytesToString(iterator.key());
             byte[] value = iterator.value();
 
             if (key.contains(FILE_PROTOCOL)) {
-                String newKey = key.replace(FILE_PROTOCOL, HTTP_LOCALHOST_PROTOCOL);
+                String newKey = key.replace(FILE_PROTOCOL, localHostProtocol);
 
                 logDebug("migrateLocalStorage: Changing key:" + key + " to '" + newKey + "'");
 
@@ -133,7 +137,7 @@ public class MigrateStorage extends CordovaPlugin {
 
 
     /**
-     * Migrate WebSQL from using `file://` to `http://localhost:8080`
+     * Migrate WebSQL from using `file://` to `http://localhost:{portNumber}`
      *
      */
     private void migrateWebSQL() {
@@ -141,6 +145,7 @@ public class MigrateStorage extends CordovaPlugin {
 
         String databasesPath = this.getWebSQLDatabasesPath();
         String referenceDbPath = this.getWebSQLReferenceDbPath();
+        String localHostDirName = this.getLocalHostProtocolDirName();
 
         if(!new File(referenceDbPath).exists()) {
             logDebug("migrateWebSQL: Databases.db was not found in path: '" + referenceDbPath + "'; Exiting..");
@@ -148,7 +153,7 @@ public class MigrateStorage extends CordovaPlugin {
         }
 
         File originalWebSQLDir = new File(databasesPath + "/" + WEBSQL_FILE_DIR_NAME);
-        File targetWebSQLDir = new File(databasesPath + "/" + WEBSQL_HTTP_LOCALHOST_DIR_NAME);
+        File targetWebSQLDir = new File(databasesPath + "/" + localHostDirName);
 
         if(!originalWebSQLDir.exists()) {
             logDebug("migrateWebSQL: original DB does not exist at '" + originalWebSQLDir.getAbsolutePath() + "'; Exiting..");
@@ -164,11 +169,10 @@ public class MigrateStorage extends CordovaPlugin {
 
         SQLiteDatabase db = SQLiteDatabase.openDatabase(referenceDbPath, null, 0);
 
-        // Update reference DB to point to `localhost:8080`
-        db.execSQL("UPDATE Databases SET origin = ? WHERE origin = ?", new String[] { WEBSQL_HTTP_LOCALHOST_DIR_NAME, WEBSQL_FILE_DIR_NAME });
-        db.execSQL("UPDATE Origins SET origin = ? WHERE origin = ?", new String[] { WEBSQL_HTTP_LOCALHOST_DIR_NAME, WEBSQL_FILE_DIR_NAME });
-
-        // rename `databases/file__0` dir to `databases/localhost_http_8080`
+        // Update reference DB to point to `localhost:{portNumber}`
+        db.execSQL("UPDATE Databases SET origin = ? WHERE origin = ?", new String[] { localHostDirName, WEBSQL_FILE_DIR_NAME });
+        
+        // rename `databases/file__0` dir to `databases/localhost_http_{portNumber}`
         boolean renamed = originalWebSQLDir.renameTo(targetWebSQLDir);
 
         if(!renamed) {
@@ -191,6 +195,9 @@ public class MigrateStorage extends CordovaPlugin {
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         try {
             super.initialize(cordova, webView);
+
+            this.portNumber = this.preferences.getString(CDV_SETTING_PORT_NUMBER, "");
+            if(this.portNumber.isEmpty() || this.portNumber == null) this.portNumber = DEFAULT_PORT_NUMBER;
 
             logDebug("Starting migration;");
 
