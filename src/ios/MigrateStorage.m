@@ -78,10 +78,16 @@
     }
     
     BOOL success = [db executeUpdate:@"UPDATE Databases SET origin = ? WHERE origin = ?", WK_WEBVIEW_PROTOCOL_DIR, UI_WEBVIEW_PROTOCOL_DIR];
-    
     if (!success)
     {
-        logDebug(@"%@ executeUpdate error = %@", TAG, [db lastErrorMessage]);
+        logDebug(@"%@ executeUpdate error for `Databases` table update = %@", TAG, [db lastErrorMessage]);
+    }
+    
+    
+    success = [db executeUpdate:@"UPDATE Origins SET origin = ? WHERE origin = ?", WK_WEBVIEW_PROTOCOL_DIR, UI_WEBVIEW_PROTOCOL_DIR];
+    if (!success)
+    {
+        logDebug(@"%@ executeUpdate error for `Origins` table update = %@", TAG, [db lastErrorMessage]);
     }
     
     [db close];
@@ -126,15 +132,18 @@
     }
     
     
-    // NOTE: There are `-shm` and `-wal` files in this directory. We are not copying them, because we closed the DB in `changeProtocolEntriesinReferenceDB`
-    if(![self moveFile:uiWebViewRefDBPath to:wkWebViewRefDBPath])
+    BOOL success1 = [self moveFile:uiWebViewRefDBPath to:wkWebViewRefDBPath];
+    BOOL success2 = [self moveFile:[uiWebViewRefDBPath stringByAppendingString:@"-shm"] to:[wkWebViewRefDBPath stringByAppendingString:@"-shm"]];
+    BOOL success3 = [self moveFile:[uiWebViewRefDBPath stringByAppendingString:@"-wal"] to:[wkWebViewRefDBPath stringByAppendingString:@"-wal"]];
+    
+    if(!success1 || !success2 || !success3)
     {
         logDebug(@"%@ could not move Databases.db; exiting..", TAG);
         return NO;
     }
     
     //
-    // Copy
+    // Move
     //  {appLibrary}/WebKit/LocalStorage/file__0/*
     // to
     //  {appLibrary}/WebKit/WebsiteData/WebSQL/http_localhost_8080/*

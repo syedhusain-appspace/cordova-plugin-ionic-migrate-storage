@@ -166,7 +166,7 @@ public class MigrateStorage extends CordovaPlugin {
 
         // Update reference DB to point to `localhost:8080`
         db.execSQL("UPDATE Databases SET origin = ? WHERE origin = ?", new String[] { WEBSQL_HTTP_LOCALHOST_DIR_NAME, WEBSQL_FILE_DIR_NAME });
-
+        db.execSQL("UPDATE Origins SET origin = ? WHERE origin = ?", new String[] { WEBSQL_HTTP_LOCALHOST_DIR_NAME, WEBSQL_FILE_DIR_NAME });
 
         // rename `databases/file__0` dir to `databases/localhost_http_8080`
         boolean renamed = originalWebSQLDir.renameTo(targetWebSQLDir);
