@@ -14,20 +14,35 @@ cordova plugin add https://github.com/pointmanhq/cordova-plugin-ionic-migrate-st
 
 Use one of [the tags listed here](https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage/tags) if you want to lock it down to a specific changeset.
 
+**The plugin uses [the `WKPort` preference supplied to the ionic webview](https://github.com/ionic-team/cordova-plugin-ionic-webview/tree/2.x#wkport). If that was not found, the default port is used (`8080`).**
+
+## Testing
+
+To test this, you will have to do the following:
+
+* Delete the app from your device
+* Remove the webview and migrate plugins from your app:
+
+```
+cordova plugin rm --save cordova-plugin-ionic-webview cordova-plugin-ionic-migrate-storage
+```
+
+* Build your app and run it. Store something in localStorage, WebSQL and IndexedDB.
+* Add the plugins back:
+        
+```
+cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.0.2
+```
+
+* Build your app and run it. The stored data must all exist!
+
 ## Caveats
 
-* This has been tested only with `cordova-plugin-ionic-webview@2.3.2`!
+* **This has been tested only with `cordova-plugin-ionic-webview@2.3.2`!**
 * Currently, this plugin does not work on simulators. PRs welcome!
 * IndexedDB migration has not been implemented in Android, because [it looks tricky](https://stackoverflow.com/a/35142175).
 * IndexedDB migration on iOS may be buggy, a PR or two will be needed to make it better. 
-* This copy is uni-directional, from old webview to new webview. It does not go the other way around. So essentially, this plugin will run only once! To test this, you will have to do the following:
-    - Delete the app from your device
-    - Remove the webview and migrate plugins from your app:
-        ```cordova plugin rm --save cordova-plugin-ionic-webview cordova-plugin-ionic-migrate-storage```
-    - Build your app and run it. Store something in localStorage, WebSQL and IndexedDB.
-    - Add the plugins back:
-        ```cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.0.2```
-    - Build your app and run it. The stored data must all exist!
+* This copy is uni-directional, from old webview to new webview. It does not go the other way around. So essentially, this plugin will run only once! 
 
 ## Thanks
 
@@ -41,7 +56,6 @@ Most of the code in this plugin was either adapted or inspired from a plethora o
 
 ## TODO 
 
-* Setup some configuration settings that can be put in via `config.xml`, such as `hostname` and `port`. This is important because ionic recommends to change the port number to something that is not `8080`.
 * Pull out debug flags to make them platform specific and not rely on booleans in the code.
 * Add some unit testing.
 * Open source stuff - github issue templates, CONTRIBUTING doc, Local development doc etc.

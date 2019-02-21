@@ -1,3 +1,6 @@
+#import <Cordova/CDV.h>
+#import <Cordova/NSDictionary+CordovaPreferences.h>
+
 #import "MigrateStorage.h"
 #import "FMDB.h"
 
@@ -27,9 +30,20 @@
 #define TARGET_IDB_DIRPATH @"WebKit/WebsiteData/IndexedDB/"
 
 #define UI_WEBVIEW_PROTOCOL_DIR @"file__0"
-#define WK_WEBVIEW_PROTOCOL_DIR @"http_localhost_8080"
+
+#define CDV_SETTING_PORT_NUMBER @"WKPort"
+#define DEFAULT_PORT_NUMBER @"8080"
+
+@interface MigrateStorage ()
+    @property (nonatomic, assign) NSString *portNumber;
+@end
 
 @implementation MigrateStorage
+
+- (NSString*)getWkWebviewProtocolDir
+{
+    return [@"http_localhost_" stringByAppendingString:self.portNumber];
+}
 
 - (BOOL)moveFile:(NSString*)src to:(NSString*)dest
 {
@@ -37,7 +51,7 @@
     logDebug(@"%@ moveFile() src: %@", TAG, src);
     logDebug(@"%@ moveFile() dest: %@", TAG, dest);
     
-    NSFileManager* fileManager = [NSFileManager defaultManager];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
     
     // Bail out if source file does not exist
     if (![fileManager fileExistsAtPath:src]) {
@@ -63,7 +77,7 @@
     return res;
 }
 
-- (BOOL)changeProtocolEntriesinReferenceDB:(NSString *)path from:(NSString *)srcProtocol to:(NSString *)targetProtocol
+- (BOOL)changeProtocolEntriesinReferenceDB:(NSString *)path from:(NSString *)srcProtocolDir to:(NSString *)targetProtocolDir
 {
     logDebug(@"%@ changeProtocolEntriesinReferenceDB()", TAG);
     
@@ -77,14 +91,14 @@
         return NO;
     }
     
-    BOOL success = [db executeUpdate:@"UPDATE Databases SET origin = ? WHERE origin = ?", WK_WEBVIEW_PROTOCOL_DIR, UI_WEBVIEW_PROTOCOL_DIR];
+    BOOL success = [db executeUpdate:@"UPDATE Databases SET origin = ? WHERE origin = ?", targetProtocolDir, srcProtocolDir];
     if (!success)
     {
         logDebug(@"%@ executeUpdate error for `Databases` table update = %@", TAG, [db lastErrorMessage]);
     }
     
     
-    success = [db executeUpdate:@"UPDATE Origins SET origin = ? WHERE origin = ?", WK_WEBVIEW_PROTOCOL_DIR, UI_WEBVIEW_PROTOCOL_DIR];
+    success = [db executeUpdate:@"UPDATE Origins SET origin = ? WHERE origin = ?", targetProtocolDir, srcProtocolDir];
     if (!success)
     {
         logDebug(@"%@ executeUpdate error for `Origins` table update = %@", TAG, [db lastErrorMessage]);
@@ -124,8 +138,10 @@
     
     // TODO Check if target file exists or not?
     
-    // Before copying, open Databases.db and change the reference from `file__0` to `localhost_http_8080`, so WkWebView will understand this
-    if (![self changeProtocolEntriesinReferenceDB:uiWebViewRefDBPath from:UI_WEBVIEW_PROTOCOL_DIR to:WK_WEBVIEW_PROTOCOL_DIR])
+    NSString *wkWebviewProtocolDir = [self getWkWebviewProtocolDir];
+    
+    // Before copying, open Databases.db and change the reference from `file__0` to `localhost_http_{portNumber}`, so WkWebView will understand this
+    if (![self changeProtocolEntriesinReferenceDB:uiWebViewRefDBPath from:UI_WEBVIEW_PROTOCOL_DIR to:wkWebviewProtocolDir])
     {
         logDebug(@"%@ could not perform needed update; exiting..", TAG);
         return NO;
@@ -146,7 +162,7 @@
     // Move
     //  {appLibrary}/WebKit/LocalStorage/file__0/*
     // to
-    //  {appLibrary}/WebKit/WebsiteData/WebSQL/http_localhost_8080/*
+    //  {appLibrary}/WebKit/WebsiteData/WebSQL/http_localhost_{portNumber}/*
     //
     
     // This dir contains all the WebSQL Databases that the cordova app
@@ -154,7 +170,7 @@
     
     
     // The target dir that should contain all the databases from `uiWebViewDBFileDir`
-    NSString *wkWebViewDBFileDir = [wkWebViewRootPath stringByAppendingPathComponent:WK_WEBVIEW_PROTOCOL_DIR];
+    NSString *wkWebViewDBFileDir = [wkWebViewRootPath stringByAppendingPathComponent:wkWebviewProtocolDir];
     
     NSArray *fileList = [fileManager contentsOfDirectoryAtPath:uiWebViewDBFileDir error:nil];
     
@@ -186,18 +202,19 @@
     logDebug(@"%@ migrateLocalStorage()", TAG);
     
     BOOL success;
+    NSString *wkWebviewProtocolDir = [self getWkWebviewProtocolDir];
     
-    NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+    NSString *appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
     
-    NSString* originalLSFileName = [UI_WEBVIEW_PROTOCOL_DIR stringByAppendingString:@".localstorage"];
-    NSString* targetLSFileName = [WK_WEBVIEW_PROTOCOL_DIR stringByAppendingString:@".localstorage"];
+    NSString *originalLSFileName = [UI_WEBVIEW_PROTOCOL_DIR stringByAppendingString:@".localstorage"];
+    NSString *targetLSFileName = [wkWebviewProtocolDir stringByAppendingString:@".localstorage"];
     
-    NSString* originalLSFilePath = [[appLibraryFolder stringByAppendingPathComponent:ORIG_LS_DIRPATH] stringByAppendingPathComponent:originalLSFileName];
-    NSString* originalLSCachePath = [[appLibraryFolder stringByAppendingPathComponent:ORIG_LS_CACHE_DIRPATH] stringByAppendingPathComponent:originalLSFileName];
+    NSString *originalLSFilePath = [[appLibraryFolder stringByAppendingPathComponent:ORIG_LS_DIRPATH] stringByAppendingPathComponent:originalLSFileName];
+    NSString *originalLSCachePath = [[appLibraryFolder stringByAppendingPathComponent:ORIG_LS_CACHE_DIRPATH] stringByAppendingPathComponent:originalLSFileName];
     
     // Use the file in the cache if not found in original path
-    NSString* original = [[NSFileManager defaultManager] fileExistsAtPath:originalLSFilePath] ? originalLSFilePath : originalLSCachePath;
-    NSString* target = [[appLibraryFolder stringByAppendingPathComponent:TARGET_LS_DIRPATH] stringByAppendingPathComponent:targetLSFileName];
+    NSString *original = [[NSFileManager defaultManager] fileExistsAtPath:originalLSFilePath] ? originalLSFilePath : originalLSCachePath;
+    NSString *target = [[appLibraryFolder stringByAppendingPathComponent:TARGET_LS_DIRPATH] stringByAppendingPathComponent:targetLSFileName];
     
     logDebug(@"%@ LS original %@", TAG, original);
     logDebug(@"%@ LS target %@", TAG, target);
@@ -225,10 +242,12 @@
 {
     logDebug(@"%@ migrateIndexedDB()", TAG);
     
-    NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+    NSString *wkWebviewProtocolDir = [self getWkWebviewProtocolDir];
     
-    NSString* original = [[appLibraryFolder stringByAppendingPathComponent:ORIG_IDB_DIRPATH] stringByAppendingPathComponent:UI_WEBVIEW_PROTOCOL_DIR];
-    NSString* target = [[appLibraryFolder stringByAppendingPathComponent:TARGET_IDB_DIRPATH] stringByAppendingPathComponent:WK_WEBVIEW_PROTOCOL_DIR];
+    NSString *appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+    
+    NSString *original = [[appLibraryFolder stringByAppendingPathComponent:ORIG_IDB_DIRPATH] stringByAppendingPathComponent:UI_WEBVIEW_PROTOCOL_DIR];
+    NSString *target = [[appLibraryFolder stringByAppendingPathComponent:TARGET_IDB_DIRPATH] stringByAppendingPathComponent:wkWebviewProtocolDir];
     
     logDebug(@"%@ IDB original %@", TAG, original);
     logDebug(@"%@ IDB target %@", TAG, target);
@@ -249,6 +268,13 @@
 - (void)pluginInitialize
 {
     logDebug(@"%@ pluginInitialize()", TAG);
+    
+    NSDictionary *cdvSettings = self.commandDelegate.settings;
+    self.portNumber = [cdvSettings cordovaSettingForKey:CDV_SETTING_PORT_NUMBER];
+    
+    if([self.portNumber length] == 0) {
+        self.portNumber = DEFAULT_PORT_NUMBER;
+    }
     
     [self migrateWebSQL];
     [self migrateLocalStorage];
