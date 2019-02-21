@@ -9,10 +9,8 @@ _* Only on iOS_
 Straight forward, just via `cordova plugin add`.
 
 ```
-cordova plugin add https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.0.2 --save
+cordova plugin add https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.1.0 --save
 ```
-
-Use one of [the tags listed here](https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage/tags) if you want to lock it down to a specific changeset.
 
 **The plugin uses [the `WKPort` preference supplied to the ionic webview](https://github.com/ionic-team/cordova-plugin-ionic-webview/tree/2.x#wkport). If that was not found, the default port is used (`8080`).**
 
@@ -31,13 +29,14 @@ cordova plugin rm --save cordova-plugin-ionic-webview cordova-plugin-ionic-migra
 * Add the plugins back:
         
 ```
-cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.0.2
+cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.1.0
 ```
 
 * Build your app and run it. The stored data must all exist!
 
-## Caveats
+## Caveats / Warnings / Gotchas
 
+* Until the plugin reaches `v.1.0.0`, breaking changes will be introduced in every minor version upgrade! Use one of [the tags listed here](https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage/tags) if you want to lock it down to a specific changeset.
 * **This has been tested only with `cordova-plugin-ionic-webview@2.3.2`!**
 * Currently, this plugin does not work on simulators. PRs welcome!
 * IndexedDB migration has not been implemented in Android, because [it looks tricky](https://stackoverflow.com/a/35142175).
