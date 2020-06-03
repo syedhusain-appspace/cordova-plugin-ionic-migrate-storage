@@ -9,7 +9,7 @@ _* Only on iOS_
 Straight forward, just via `cordova plugin add`.
 
 ```
-cordova plugin add https://github.com/pointmanhq/cordova-plugin-ionic-migrate-storage#v0.1.0 --save
+cordova plugin add https://github.com/syedhusain-appspace/cordova-plugin-ionic-migrate-storage#v0.1.1 --save
 ```
 
 **The plugin uses [the `WKPort` preference supplied to the ionic webview](https://github.com/ionic-team/cordova-plugin-ionic-webview/tree/2.x#wkport). If that was not found, the default port is used (`8080`).**
