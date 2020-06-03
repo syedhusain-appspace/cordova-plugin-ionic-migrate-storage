@@ -42,7 +42,7 @@
 
 - (NSString*)getWkWebviewProtocolDir
 {
-    return [@"http_localhost_" stringByAppendingString:self.portNumber];
+    return @"ionic_localhost_0";
 }
 
 - (BOOL)moveFile:(NSString*)src to:(NSString*)dest
