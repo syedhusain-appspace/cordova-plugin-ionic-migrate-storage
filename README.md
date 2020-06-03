@@ -42,6 +42,7 @@ cordova plugin add --save cordova-plugin-ionic-webview@2.3.2 https://github.com/
 * IndexedDB migration has not been implemented in Android, because [it looks tricky](https://stackoverflow.com/a/35142175).
 * IndexedDB migration on iOS may be buggy, a PR or two will be needed to make it better. 
 * This copy is uni-directional, from old webview to new webview. It does not go the other way around. So essentially, this plugin will run only once! 
+* syedhusain: Modify to support ionic webview v4 (hardcoded the path to ionic_localhost_0)
 
 ## Thanks
 
